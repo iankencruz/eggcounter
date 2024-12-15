@@ -29,4 +29,6 @@ vite.config.ts.timestamp-*
 /backend/tmp/*
 /backend/.env
 
+.env
+
 
