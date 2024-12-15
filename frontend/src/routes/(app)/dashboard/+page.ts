@@ -13,6 +13,6 @@ export const load = async ({ fetch }) => {
 		throw new Error(`Failed to load dashboard data: ${res.statusText}`);
 	}
 
-	const data = await res.json();
-	return { stats: data.stats, recentActivities: data.recentActivities };
+	//const data = await res.json();
+	//return { stats: data.stats, recentActivities: data.recentActivities };
 };
