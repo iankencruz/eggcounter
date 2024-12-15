@@ -28,6 +28,10 @@ vite.config.ts.timestamp-*
 /backend/tmp
 /backend/tmp/*
 /backend/.env
+build-errors.log
+main
+
+
 
 .env
 
