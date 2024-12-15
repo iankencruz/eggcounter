@@ -18,6 +18,7 @@ type Application struct {
 	DB        *pgxpool.Pool
 	Session   *scs.SessionManager
 	UserModel *models.UserModel
+	EggModel  *models.EggModel
 }
 
 func main() {
@@ -62,6 +63,7 @@ func main() {
 		DB:        dbpool,
 		Session:   sessionManager,
 		UserModel: &models.UserModel{DB: dbpool},
+		EggModel:  &models.EggModel{DB: dbpool},
 	}
 
 	// 3. Start the server

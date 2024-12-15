@@ -32,6 +32,20 @@ func (app *Application) dashboardHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Fetch total eggs consumed
+	totalEggs, err := app.EggModel.GetTotalEggCount(r.Context(), userID)
+	if err != nil {
+		SendJSON(w, http.StatusInternalServerError, nil, "Failed to fetch total egg count")
+		return
+	}
+
+	// Fetch recent entries
+	recentEntries, err := app.EggModel.GetRecentEggEntries(r.Context(), userID, 5)
+	if err != nil {
+		SendJSON(w, http.StatusInternalServerError, nil, "Failed to fetch recent egg entries")
+		return
+	}
+
 	// Build the dashboard response
 	data := map[string]interface{}{
 		"user": map[string]string{
@@ -40,6 +54,8 @@ func (app *Application) dashboardHandler(w http.ResponseWriter, r *http.Request)
 			"email":     user.Email,
 			"username":  user.Username,
 		},
+		"totalEggs":     totalEggs,
+		"recentEntries": recentEntries,
 	}
 
 	// Send JSON response
@@ -168,5 +184,51 @@ func (app *Application) authStatusHandler(w http.ResponseWriter, r *http.Request
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"user": user,
+	})
+}
+
+func (app *Application) getEggCountHandler(w http.ResponseWriter, r *http.Request) {
+	userID := app.Session.GetInt(r.Context(), "userID")
+	if userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	total, err := app.EggModel.GetTotalEggCount(r.Context(), userID)
+	if err != nil {
+		http.Error(w, "Failed to fetch egg count", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"totalEggs": total,
+	})
+}
+
+func (app *Application) addEggCountHandler(w http.ResponseWriter, r *http.Request) {
+	userID := app.Session.GetInt(r.Context(), "userID")
+	if userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	type Request struct {
+		Amount int `json:"amount"`
+	}
+
+	var req Request
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Amount <= 0 {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+		return
+	}
+
+	err := app.EggModel.AddEggCount(r.Context(), userID, req.Amount)
+	if err != nil {
+		http.Error(w, "Failed to add egg count", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Egg count added successfully",
 	})
 }
