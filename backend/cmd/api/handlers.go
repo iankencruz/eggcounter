@@ -147,11 +147,7 @@ func (app *Application) loginHandler(w http.ResponseWriter, r *http.Request) {
 
 func (app *Application) logoutHandler(w http.ResponseWriter, r *http.Request) {
 	app.Session.Destroy(r.Context())
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "Logged out successfully",
-	})
+	SendJSON(w, http.StatusOK, nil, "Logged out successfully")
 }
 
 func (app *Application) authStatusHandler(w http.ResponseWriter, r *http.Request) {
