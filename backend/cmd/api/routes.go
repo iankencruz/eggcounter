@@ -1,56 +1,77 @@
 package main
 
 import (
+	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
 )
 
-func (app *application) routes() http.Handler {
-	r := chi.NewRouter()
+func (app *Application) routes() *chi.Mux {
+	router := chi.NewRouter()
 
-	// Global middlewares
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
+	router.Use(app.Session.LoadAndSave)
+	// Public routes
+	router.Post("/api/register", app.registerHandler)
+	router.Post("/api/login", app.loginHandler)
+	router.Post("/api/logout", app.logoutHandler)
+	router.Get("/api/auth/status", app.authStatusHandler)
 
-	// Inject database pool into context
-	r.Use(app.DBMiddleware(app.DB))
+	// Protected routes
+	router.Route("/api", func(r chi.Router) {
+		r.Use(app.Session.LoadAndSave)
+		r.Use(app.requireAuth)
+		r.Get("/dashboard", app.dashboardHandler)
+	})
 
-	// Serve static files from the Astro build directory
-	buildPath := "./frontend/dist"
-	fs := http.FileServer(http.Dir(buildPath))
-	r.Handle("/static/*", fs)
+	// Get the project root directory
+	rootPath, err := os.Getwd()
+	if err != nil {
+		panic("Unable to get current working directory: " + err.Error())
+	}
 
-	// SPA fallback to serve index.html for unknown routes
-	r.NotFound(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, filepath.Join(buildPath, "index.html"))
+	// Static files path
+	staticPath := filepath.Join(rootPath, "frontend", "build")
+
+	// Log where files are served from
+	log.Printf("Serving static files from %s", staticPath)
+
+	// Serve static files
+	fileServer := http.FileServer(http.Dir(staticPath))
+	router.Handle("/static/*", http.StripPrefix("/static", fileServer))
+	router.Handle("/favicon.ico", http.StripPrefix("/", fileServer))
+	router.Handle("/manifest.json", http.StripPrefix("/", fileServer))
+
+	// Handle unmatched routes with a custom 404 page
+	router.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		// Serve 404.html file
+		w.WriteHeader(http.StatusNotFound)
+		http.ServeFile(w, r, filepath.Join(staticPath, "404.html"))
+	})
+
+	// Fallback handler
+	router.Handle("/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestedPath := filepath.Join(staticPath, r.URL.Path)
+		if fileExists(requestedPath) {
+			http.ServeFile(w, r, requestedPath)
+		} else if r.URL.Path != "/api/dashboard" { // Avoid falling back for API routes
+			log.Printf("Falling back to index.html for route: %s", r.URL.Path)
+			http.ServeFile(w, r, filepath.Join(staticPath, "index.html"))
+		} else {
+			http.NotFound(w, r)
+		}
 	}))
 
-	// Mount authenticated API router
-	r.Mount("/api", app.AuthenticatedAPIRouter())
-
-	return r
+	return router
 }
 
-// AuthenticatedAPIRouter creates a router for authenticated API routes
-func (app *application) AuthenticatedAPIRouter() http.Handler {
-	r := chi.NewRouter()
-	r.Use(app.AuthMiddleware) // Apply authentication middleware to all routes under /api
-
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Welcome to the Authenticated API"))
-	})
-
-	// Example: Add additional authenticated API routes
-	r.Get("/profile", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Your profile details"))
-	})
-
-	r.Get("/settings", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Your account settings"))
-	})
-
-	return r
+// Helper function to check if a file exists
+func fileExists(filePath string) bool {
+	info, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
 }

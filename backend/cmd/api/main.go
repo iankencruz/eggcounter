@@ -2,25 +2,25 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
-	"github.com/gorilla/sessions"
+	"github.com/alexedwards/scs/pgxstore"
+	"github.com/alexedwards/scs/v2"
 	"github.com/iankencruz/eggcounter/backend/internal/models"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
 
-type application struct {
-	DB           *pgxpool.Pool
-	User         *models.UserModel
-	SessionStore *sessions.CookieStore
+type Application struct {
+	DB        *pgxpool.Pool
+	Session   *scs.SessionManager
+	UserModel *models.UserModel
 }
 
 func main() {
-	// Initialize session store
 
 	curDir, err := os.Getwd()
 	if err != nil {
@@ -32,38 +32,49 @@ func main() {
 		log.Fatalf("Error loading .env file: %v", err)
 	}
 
-	// Create database connection string
-	dbUser := os.Getenv("DB_USER")
-	dbPassword := os.Getenv("DB_PASSWORD")
-	dbHost := os.Getenv("DB_HOST")
-	dbName := os.Getenv("DB_NAME")
-	dbPort := os.Getenv("DB_PORT")
+	dsn := os.Getenv("DATABASE_URL")
+	dbpool, err := pgxpool.New(context.Background(), dsn)
+	log.Printf("Connecting to database: %s", os.Getenv("DATABASE_URL"))
 
-	sessionStore := sessions.NewCookieStore([]byte(os.Getenv("SESSION_KEY")))
-
-	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", dbUser, dbPassword, dbHost, dbPort, dbName)
-
-	// Initialize database connection pool
-	pool, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil {
-		log.Fatal("Failed to connect to the database:", err)
+		log.Fatal("Unable to connect to database: ", err)
 	}
-	defer pool.Close()
+	defer dbpool.Close()
 
-	userModel := &models.UserModel{
-		SessionStore: sessionStore,
-	}
+	// Use PingContext to check the connection
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 
-	// Create application struct
-	app := &application{
-		DB:           pool,
-		User:         userModel,
-		SessionStore: sessionStore,
+	if err := dbpool.Ping(ctx); err != nil {
+		log.Fatalf("Database ping failed: %v", err)
 	}
 
-	// Start the server on port 5050
-	log.Println("Starting GO API server on :3000")
-	if err := http.ListenAndServe(":3000", app.routes()); err != nil {
-		log.Fatal(err)
+	// Initialize PostgreSQL-backed session manager
+	sessionManager := scs.New()
+	sessionManager.Store = pgxstore.New(dbpool)
+	sessionManager.Lifetime = 24 * time.Hour // Set session lifetime
+	sessionManager.Cookie.Persist = true
+	sessionManager.Cookie.SameSite = http.SameSiteLaxMode
+	sessionManager.Cookie.Secure = false // Set to true in production
+
+	app := &Application{
+
+		DB:        dbpool,
+		Session:   sessionManager,
+		UserModel: &models.UserModel{DB: dbpool},
 	}
+
+	// 3. Start the server
+	srv := &http.Server{
+		Addr:    ":8080",
+		Handler: app.routes(),
+	}
+
+	log.Println("Starting server on :8080")
+
+	err = srv.ListenAndServe()
+	if err != nil {
+		log.Fatal("Server failed to start: ", err)
+	}
+
 }
