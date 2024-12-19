@@ -7,7 +7,7 @@
 
 <div class="h-full bg-gray-50">
 	<!-- Main Content Area -->
-	<main class="min-h-svh py-4">
+	<main class="min-h-svh">
 		<div class="mx-auto">
 			{@render children()}
 		</div>

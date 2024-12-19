@@ -7,16 +7,21 @@
 		Calendar,
 		Document,
 		ChartBar,
-		ArrowRightEndOnRectangle
+		ArrowRightEndOnRectangle,
+		ChevronDown,
+		ChevronRight
 	} from '@steeze-ui/heroicons';
 	import { goto } from '$app/navigation';
 
 	let sidebarOpen = false;
 	let showLogoutModal = false;
+	let isFriendsOpen = false;
 
-	const navItems = [
-		{ name: 'Dashboard', href: '/dashboard', icon: Home },
-		{ name: 'Friends', href: '/friends', icon: UserGroup }
+	const navItems = [{ name: 'Dashboard', href: '/dashboard', icon: Home }];
+
+	const friendSubItems = [
+		{ name: 'Friends', href: '/friends/list' },
+		{ name: 'Friend Requests', href: '/friends/requests' }
 	];
 
 	const logoutItem = { name: 'Logout', action: 'logout', icon: ArrowRightEndOnRectangle };
@@ -24,6 +29,11 @@
 	// Toggle mobile sidebar visibility
 	function toggleSidebar() {
 		sidebarOpen = !sidebarOpen;
+	}
+
+	// Toggle the visibility of the friends subitems
+	function toggleFriendsSubItems() {
+		isFriendsOpen = !isFriendsOpen;
 	}
 
 	// MODAL FUNCTIONS
@@ -81,23 +91,53 @@
 								alt="Your Company"
 							/>
 						</div>
-						<nav class="flex flex-1 flex-col">
-							<ul role="list" class="flex flex-col gap-y-7">
+						<!-- Navigation Links -->
+						<nav class="mt-5 flex h-full flex-col justify-between">
+							<ul class="space-y-2">
 								{#each navItems as { name, href, icon }}
 									<li>
 										<a
 											{href}
 											class="group flex items-center gap-x-3 rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600"
 										>
-											<Icon
-												src={icon}
-												theme="solid"
-												class="h-6 w-6 text-gray-400 group-hover:text-indigo-600"
-											/>
+											<Icon src={icon} class="h-6 w-6 text-gray-400 group-hover:text-indigo-600" />
 											{name}
 										</a>
 									</li>
 								{/each}
+								<li>
+									<button
+										class="flex w-full items-center justify-between p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600"
+										onclick={toggleFriendsSubItems}
+									>
+										<div class="flex items-center gap-x-3">
+											<Icon src={UserGroup} class="h-6 w-6 text-gray-400" />
+											<span>Friends</span>
+										</div>
+										<Icon
+											src={isFriendsOpen ? ChevronDown : ChevronRight}
+											class="h-4 w-4 text-gray-400"
+										/>
+									</button>
+
+									{#if isFriendsOpen}
+										<ul class="ml-6 space-y-2">
+											{#each friendSubItems as { name, href }}
+												<li>
+													<button
+														onclick={() => {
+															toggleSidebar();
+														}}
+													>
+														<a {href} class="block text-sm text-gray-700 hover:text-indigo-600">
+															{name}
+														</a>
+													</button>
+												</li>
+											{/each}
+										</ul>
+									{/if}
+								</li>
 							</ul>
 							<div class="mt-auto py-8">
 								<button
@@ -106,7 +146,6 @@
 								>
 									<Icon
 										src={logoutItem.icon}
-										theme="solid"
 										class="h-6 w-6 text-gray-400 group-hover:text-red-600"
 									/>
 									{logoutItem.name}
@@ -136,26 +175,47 @@
 								{href}
 								class="group flex items-center gap-x-3 rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600"
 							>
-								<Icon
-									src={icon}
-									theme="solid"
-									class="h-6 w-6 text-gray-400 group-hover:text-indigo-600"
-								/>
+								<Icon src={icon} class="h-6 w-6 text-gray-400 group-hover:text-indigo-600" />
 								{name}
 							</a>
 						</li>
 					{/each}
+
+					<li>
+						<button
+							onclick={toggleFriendsSubItems}
+							class="flex w-full items-center justify-between p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-indigo-600"
+						>
+							<div class="flex items-center gap-x-3">
+								<Icon src={UserGroup} class="h-6 w-6 text-gray-400" />
+								<span>Friends</span>
+							</div>
+							<Icon
+								src={isFriendsOpen ? ChevronDown : ChevronRight}
+								class="h-4 w-4 text-gray-400"
+							/>
+						</button>
+
+						{#if isFriendsOpen}
+							<ul class="ml-6 space-y-2">
+								{#each friendSubItems as { name, href }}
+									<li>
+										<a {href} class="block text-sm text-gray-700 hover:text-indigo-600">
+											{name}
+										</a>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+					</li>
 				</ul>
+
 				<div class="mt-auto py-8">
 					<button
 						onclick={handleLogout}
 						class="group flex w-full items-center gap-x-3 rounded-md p-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 hover:text-red-600"
 					>
-						<Icon
-							src={logoutItem.icon}
-							theme="solid"
-							class="h-6 w-6 text-gray-400 group-hover:text-red-600"
-						/>
+						<Icon src={logoutItem.icon} class="h-6 w-6 text-gray-400 group-hover:text-red-600" />
 						{logoutItem.name}
 					</button>
 				</div>
@@ -164,7 +224,7 @@
 	</div>
 
 	<div
-		class="shadow-xs sticky top-0 z-40 flex items-center gap-x-6 bg-white px-4 py-4 sm:px-6 lg:hidden"
+		class="shadow-xs sticky top-0 z-40 flex items-center justify-between gap-x-6 bg-white px-4 py-4 sm:px-6 lg:hidden"
 	>
 		<button type="button" class="-m-2.5 p-2.5 text-gray-700" onclick={toggleSidebar}>
 			<span class="sr-only">Open sidebar</span>
