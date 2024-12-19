@@ -16,6 +16,7 @@ type User struct {
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Password  string `json:"-"`
+	CreatedAt string `json:"created_at"`
 }
 
 type UserModel struct {

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -271,4 +272,110 @@ func (app *Application) deleteEntryHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	SendJSON(w, http.StatusOK, nil, "Entry successfully undone")
+}
+
+// FRIENDS HANDLERS
+
+func (app *Application) sendFriendRequestHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ReceiverID int `json:"receiver_id"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	senderID := app.Session.GetInt(r.Context(), "userID")
+	if senderID == 0 {
+		SendJSON(w, http.StatusUnauthorized, nil, "Unauthorized")
+		return
+	}
+
+	err := app.FriendModel.SendFriendRequest(r.Context(), senderID, req.ReceiverID)
+	if err != nil {
+		SendJSON(w, http.StatusInternalServerError, nil, "Failed to send friend request")
+		return
+	}
+
+	SendJSON(w, http.StatusOK, nil, "Friend request sent successfully")
+}
+
+// eggcounter/backend/cmd/api/handlers.go
+
+func (app *Application) acceptFriendRequestHandler(w http.ResponseWriter, r *http.Request) {
+	userID := app.Session.GetInt(r.Context(), "userID")
+	if userID == 0 {
+		SendJSON(w, http.StatusUnauthorized, nil, "Unauthorized. Please log in.")
+		return
+	}
+
+	friendID := chi.URLParam(r, "id")
+	if friendID == "" {
+		SendJSON(w, http.StatusBadRequest, nil, "Friend request ID is required")
+		return
+	}
+
+	err := app.FriendModel.AcceptFriendRequest(r.Context(), friendID)
+	if err != nil {
+		SendJSON(w, http.StatusInternalServerError, nil, "Failed to accept friend request")
+		return
+	}
+
+	SendJSON(w, http.StatusOK, nil, "Friend request accepted")
+}
+
+// eggcounter/backend/cmd/api/handlers.go
+
+func (app *Application) rejectFriendRequestHandler(w http.ResponseWriter, r *http.Request) {
+	userID := app.Session.GetInt(r.Context(), "userID")
+	if userID == 0 {
+		SendJSON(w, http.StatusUnauthorized, nil, "Unauthorized. Please log in.")
+		return
+	}
+
+	friendID := chi.URLParam(r, "id")
+	if friendID == "" {
+		SendJSON(w, http.StatusBadRequest, nil, "Friend request ID is required")
+		return
+	}
+
+	err := app.FriendModel.RejectFriendRequest(r.Context(), friendID)
+	if err != nil {
+		SendJSON(w, http.StatusInternalServerError, nil, "Failed to reject friend request")
+		return
+	}
+
+	SendJSON(w, http.StatusOK, nil, "Friend request rejected")
+}
+
+// eggcounter/backend/cmd/api/handlers.go
+
+func (app *Application) getFriendsListHandler(w http.ResponseWriter, r *http.Request) {
+	userID := app.Session.GetInt(r.Context(), "userID")
+	if userID == 0 {
+		SendJSON(w, http.StatusUnauthorized, nil, "Unauthorized. Please log in.")
+		return
+	}
+
+	friends, err := app.FriendModel.GetFriendsList(r.Context(), userID)
+	if err != nil {
+		SendJSON(w, http.StatusInternalServerError, nil, "Failed to retrieve friends list")
+		return
+	}
+
+	SendJSON(w, http.StatusOK, friends, "Friends list retrieved successfully")
+}
+
+func (app *Application) getFriendRequestsHandler(w http.ResponseWriter, r *http.Request) {
+	userID := app.Session.GetInt(r.Context(), "userID")
+	if userID == 0 {
+		SendJSON(w, http.StatusUnauthorized, nil, "Unauthorized. Please log in.")
+		return
+	}
+
+	friendRequests, err := app.FriendModel.GetFriendRequests(r.Context(), userID)
+	if err != nil {
+		log.Printf("Error fetching friend requests: %v", err)
+		SendJSON(w, http.StatusInternalServerError, nil, "Failed to retrieve friend requests")
+		return
+	}
+
+	SendJSON(w, http.StatusOK, friendRequests, "Friend requests retrieved successfully")
 }

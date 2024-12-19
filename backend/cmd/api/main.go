@@ -15,10 +15,11 @@ import (
 )
 
 type Application struct {
-	DB        *pgxpool.Pool
-	Session   *scs.SessionManager
-	UserModel *models.UserModel
-	EggModel  *models.EggModel
+	DB          *pgxpool.Pool
+	Session     *scs.SessionManager
+	UserModel   *models.UserModel
+	EggModel    *models.EggModel
+	FriendModel *models.FriendModel
 }
 
 func main() {
@@ -60,10 +61,11 @@ func main() {
 
 	app := &Application{
 
-		DB:        dbpool,
-		Session:   sessionManager,
-		UserModel: &models.UserModel{DB: dbpool},
-		EggModel:  &models.EggModel{DB: dbpool},
+		DB:          dbpool,
+		Session:     sessionManager,
+		UserModel:   &models.UserModel{DB: dbpool},
+		EggModel:    &models.EggModel{DB: dbpool},
+		FriendModel: &models.FriendModel{DB: dbpool},
 	}
 
 	// 3. Start the server
