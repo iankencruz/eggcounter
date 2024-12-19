@@ -65,6 +65,25 @@
 		}
 	};
 
+	// Undo a specific entry
+	const undoEntry = async (id: number) => {
+		try {
+			const res = await fetch(`/api/eggcount/${id}`, {
+				method: 'DELETE',
+				credentials: 'include'
+			});
+
+			const result = await res.json();
+
+			if (!res.ok) {
+				error = result.message || 'Failed to undo entry';
+			} else {
+				await fetchRecentEntries(); // Re-fetch to update list
+			}
+		} catch (err) {
+			error = 'An error occurred while undoing the entry';
+		}
+	};
 	// Fetch data on mount
 	onMount(fetchRecentEntries);
 </script>
@@ -92,10 +111,16 @@
 					{#each recentEntries as entry, i}
 						<li
 							class="flex items-center justify-between rounded p-4 shadow
-							{i === 0 ? 'bg-green-50 text-green-700' : 'bg-white'}"
+						{i === 0 ? 'bg-green-50 text-green-700' : 'bg-white'}"
 						>
-							<p class="font-semibold">Eggs Consumed: {entry.amount}</p>
-							<p class="text-sm text-gray-500">{formatDate(entry.created_at)}</p>
+							<div>
+								<p class="font-semibold">Eggs Consumed: {entry.amount}</p>
+								<p class="text-sm text-gray-500">{formatDate(entry.created_at)}</p>
+							</div>
+
+							<button on:click={() => undoEntry(entry.id)} class="text-red-600 hover:underline">
+								Undo
+							</button>
 						</li>
 					{/each}
 				</ul>
