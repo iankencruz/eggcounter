@@ -74,3 +74,37 @@ func (m *EggModel) GetRecentEggEntries(ctx context.Context, userID int, limit in
 
 	return entries, nil
 }
+
+func (m *EggModel) DeleteEntryByID(ctx context.Context, userID int, entryID string) error {
+	query := `
+		DELETE FROM eggcount
+		WHERE id = $1 AND user_id = $2
+	`
+	_, err := m.DB.Exec(ctx, query, entryID, userID)
+	return err
+}
+
+// Get the amount of a specific egg count entry
+func (m *EggModel) GetEntryByID(ctx context.Context, userID, entryID int) (int, error) {
+	var amount int
+	query := `
+		SELECT amount 
+		FROM eggcount 
+		WHERE id = $1 AND user_id = $2
+	`
+	err := m.DB.QueryRow(ctx, query, entryID, userID).Scan(&amount)
+	if err != nil {
+		return 0, err
+	}
+	return amount, nil
+}
+
+// Insert a negative entry to "undo" the previous entry
+func (m *EggModel) InsertNegativeEntry(ctx context.Context, userID, amount int) error {
+	query := `
+		INSERT INTO eggcount (user_id, amount) 
+		VALUES ($1, $2)
+	`
+	_, err := m.DB.Exec(ctx, query, userID, -amount)
+	return err
+}

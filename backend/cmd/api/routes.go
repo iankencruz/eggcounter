@@ -26,6 +26,8 @@ func (app *Application) routes() *chi.Mux {
 		r.Get("/dashboard", app.dashboardHandler)
 		r.Get("/eggcount", app.getEggCountHandler)  // Fetch total egg count
 		r.Post("/eggcount", app.addEggCountHandler) // Add egg count
+		r.Delete("/eggcount/{id}", app.deleteEntryHandler)
+
 	})
 
 	// Get the project root directory

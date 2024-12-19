@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/iankencruz/eggcounter/backend/internal/models"
 )
 
@@ -231,4 +233,42 @@ func (app *Application) addEggCountHandler(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "Egg count added successfully",
 	})
+}
+
+func (app *Application) deleteEntryHandler(w http.ResponseWriter, r *http.Request) {
+	userID := app.Session.GetInt(r.Context(), "userID")
+	if userID == 0 {
+		SendJSON(w, http.StatusUnauthorized, nil, "Unauthorized. Please log in.")
+		return
+	}
+
+	// Extract entry ID from URL
+	entryID := chi.URLParam(r, "id")
+	if entryID == "" {
+		SendJSON(w, http.StatusBadRequest, nil, "Entry ID is required")
+		return
+	}
+
+	// Convert entryID to an integer
+	id, err := strconv.Atoi(entryID)
+	if err != nil {
+		SendJSON(w, http.StatusBadRequest, nil, "Invalid entry ID")
+		return
+	}
+
+	// Get the amount for this entry
+	amount, err := app.EggModel.GetEntryByID(r.Context(), userID, id)
+	if err != nil {
+		SendJSON(w, http.StatusInternalServerError, nil, "Failed to retrieve entry amount")
+		return
+	}
+
+	// Insert a new "undo" entry (insert a negative amount)
+	err = app.EggModel.InsertNegativeEntry(r.Context(), userID, amount)
+	if err != nil {
+		SendJSON(w, http.StatusInternalServerError, nil, "Failed to add reversal entry")
+		return
+	}
+
+	SendJSON(w, http.StatusOK, nil, "Entry successfully undone")
 }
